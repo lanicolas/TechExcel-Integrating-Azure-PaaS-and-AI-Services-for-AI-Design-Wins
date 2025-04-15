@@ -3,17 +3,23 @@ using ContosoSuitesWebAPI.Entities;
 using Microsoft.Azure.Cosmos;
 using System.Globalization;
 
-
 namespace ContosoSuitesWebAPI.Services
 {
     /// <summary>
     /// The vectorization service for generating embeddings and executing vector searches.
     /// </summary>
-    public class VectorizationService(AzureOpenAIClient openAIClient, CosmosClient cosmosClient, IConfiguration configuration) : IVectorizationService
+    public class VectorizationService : IVectorizationService
     {
-        private readonly AzureOpenAIClient _client = openAIClient;
-        private readonly CosmosClient _cosmosClient = cosmosClient;
-        private readonly string _embeddingDeploymentName = configuration.GetValue<string>("AzureOpenAI:EmbeddingDeploymentName") ?? "text-embedding-ada-002";
+        private readonly AzureOpenAIClient _client;
+        private readonly CosmosClient _cosmosClient;
+        private readonly string _embeddingDeploymentName;
+
+        public VectorizationService(AzureOpenAIClient openAIClient, CosmosClient cosmosClient, IConfiguration configuration)
+        {
+            _client = openAIClient;
+            _cosmosClient = cosmosClient;
+            _embeddingDeploymentName = configuration.GetValue<string>("AzureOpenAI:EmbeddingDeploymentName") ?? "text-embedding-ada-002";
+        }
 
         /// <summary>
         /// Translate a text string into a vector embedding.
@@ -65,7 +71,7 @@ namespace ContosoSuitesWebAPI.Services
                     results.Add(item);
                 }
             }
-            return max_results > 0 ? results.Take(max_results).ToList() : [.. results];
+            return max_results > 0 ? results.Take(max_results).ToList() : results;
         }
     }
 }
