@@ -12,12 +12,14 @@ namespace ContosoSuitesWebAPI.Services
     {
         private readonly AzureOpenAIClient _client;
         private readonly CosmosClient _cosmosClient;
+        private readonly IConfiguration _configuration;
         private readonly string _embeddingDeploymentName;
 
         public VectorizationService(AzureOpenAIClient openAIClient, CosmosClient cosmosClient, IConfiguration configuration)
         {
             _client = openAIClient;
             _cosmosClient = cosmosClient;
+            _configuration = configuration;
             _embeddingDeploymentName = configuration.GetValue<string>("AzureOpenAI:EmbeddingDeploymentName") ?? "text-embedding-ada-002";
         }
 
@@ -52,8 +54,8 @@ namespace ContosoSuitesWebAPI.Services
         ///// </summary>
         public async Task<List<VectorSearchResult>> ExecuteVectorSearch(float[] queryVector, int max_results = 0, double minimum_similarity_score = 0.8)
         {
-            var db = _cosmosClient.GetDatabase(configuration.GetValue<string>("CosmosDB:DatabaseName") ?? "ContosoSuites");
-            var container = db.GetContainer(configuration.GetValue<string>("CosmosDB:MaintenanceRequestsContainerName") ?? "MaintenanceRequests");
+            var db = _cosmosClient.GetDatabase(_configuration.GetValue<string>("CosmosDB:DatabaseName") ?? "ContosoSuites");
+            var container = db.GetContainer(_configuration.GetValue<string>("CosmosDB:MaintenanceRequestsContainerName") ?? "MaintenanceRequests");
 
             var vectorString = string.Join(", ", queryVector.Select(v => v.ToString(CultureInfo.InvariantCulture)).ToArray());
 
