@@ -11,7 +11,7 @@ from azure.ai.textanalytics import ExtractiveSummaryAction, AbstractiveSummaryAc
 from azure.cosmos import CosmosClient
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 import openai
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+
 
 
 
@@ -55,7 +55,7 @@ def create_transcription_request(audio_file, speech_recognition_language="en-US"
         nonlocal done
         done= True
 
-        # Subscribe to the events fired by the conversation transcriber
+    # Subscribe to the events fired by the conversation transcriber
     transcriber.transcribed.connect(handle_final_result)
     transcriber.session_started.connect(lambda evt: print(f'SESSION STARTED: {evt}'))
     transcriber.session_stopped.connect(lambda evt: print(f'SESSION STOPPED {evt}'))
@@ -75,7 +75,9 @@ def create_transcription_request(audio_file, speech_recognition_language="en-US"
 
     transcriber.stop_transcribing_async()
 
+
     return all_results
+
 
 def make_azure_openai_chat_request(system, call_contents):
     """Create and return a new chat completion request. Key assumptions:
