@@ -5,23 +5,27 @@ using Azure.Core;
 using Microsoft.SemanticKernel;
 using System.ComponentModel;
 
-
-namespace ContosoSuitesWebAPI.Services;
-
-/// <summary>
-/// The database service for querying the Contoso Suites database.
-/// </summary>
-public class DatabaseService(string connectionString) : IDatabaseService
+namespace ContosoSuitesWebAPI.Services
 {
-    [KernelFunction]
+    /// <summary>
+    /// The database service for querying the Contoso Suites database.
+    /// </summary>
+    public class DatabaseService : IDatabaseService
+    {
+        private readonly string _connectionString;
+
+        public DatabaseService(string connectionString)
+        {
+            _connectionString = connectionString;
+        }
+
+        [KernelFunction]
         [Description("Get all hotels.")]
         public async Task<IEnumerable<Hotel>> GetHotels()
         {
             var sql = "SELECT HotelID, HotelName, City, Country FROM dbo.Hotel";
-            using var conn = new SqlConnection(
-                connectionString: connectionString!
-            );
-            conn.Open();
+            using var conn = new SqlConnection(_connectionString);
+            await conn.OpenAsync();
             using var cmd = new SqlCommand(sql, conn);
             using var reader = await cmd.ExecuteReaderAsync();
             var hotels = new List<Hotel>();
@@ -35,24 +39,21 @@ public class DatabaseService(string connectionString) : IDatabaseService
                     Country = reader.GetString(3)
                 });
             }
-            conn.Close();
+            await conn.CloseAsync();
 
             return hotels;
         }
 
-    /// <summary>
-    /// Get a specific hotel from the database.
-    /// </summary>
-    [KernelFunction]
-    [Description("Get Bookings for a specific hotel.")]
-        public async Task<IEnumerable<Booking>> GetBookingsForHotel(
-        [Description("The ID of the hotel")] int hotelId
-        )
+        /// <summary>
+        /// Get a specific hotel from the database.
+        /// </summary>
+        [KernelFunction]
+        [Description("Get Bookings for a specific hotel.")]
+        public async Task<IEnumerable<Booking>> GetBookingsForHotel([Description("The ID of the hotel")] int hotelId)
+        {
             var sql = "SELECT BookingID, CustomerID, HotelID, StayBeginDate, StayEndDate, NumberOfGuests FROM dbo.Booking WHERE HotelID = @HotelID";
-            using var conn = new SqlConnection(
-                connectionString: connectionString!
-            );
-            conn.Open();
+            using var conn = new SqlConnection(_connectionString);
+            await conn.OpenAsync();
             using var cmd = new SqlCommand(sql, conn);
             cmd.Parameters.AddWithValue("@HotelID", hotelId);
             using var reader = await cmd.ExecuteReaderAsync();
@@ -69,54 +70,50 @@ public class DatabaseService(string connectionString) : IDatabaseService
                     NumberOfGuests = reader.GetInt32(5)
                 });
             }
-            conn.Close();
+            await conn.CloseAsync();
 
             return bookings;
         }
 
-    /// <summary>
-    /// Get bookings for a specific hotel that are after a specified date.
-    /// </summary>
+        /// <summary>
+        /// Get bookings for a specific hotel that are after a specified date.
+        /// </summary>
         [KernelFunction]
         [Description("Get Bookings for a specific hotel that are after a specified date.")]
-        public async Task<IEnumerable<Booking>> GetBookingsForHotel(
-            public async Task<IEnumerable<Booking>> GetBookingsByHotelAndMinimumDate(
-                [Description("The ID of the hotel")] int hotelId,
-                [Description("Date")] DateTime dt
-                )
+        public async Task<IEnumerable<Booking>> GetBookingsByHotelAndMinimumDate(
+            [Description("The ID of the hotel")] int hotelId,
+            [Description("Date")] DateTime dt)
         {
-        var sql = "SELECT BookingID, CustomerID, HotelID, StayBeginDate, StayEndDate, NumberOfGuests FROM dbo.Booking WHERE HotelID = @HotelID AND StayBeginDate >= @StayBeginDate";
-        using var conn = new SqlConnection(
-            connectionString: connectionString!
-        );
-        conn.Open();
-        using var cmd = new SqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("@HotelID", hotelId);
-        cmd.Parameters.AddWithValue("@StayBeginDate", dt);
-        using var reader = await cmd.ExecuteReaderAsync();
-        var bookings = new List<Booking>();
-        while (await reader.ReadAsync())
-        {
-            bookings.Add(new Booking
+            var sql = "SELECT BookingID, CustomerID, HotelID, StayBeginDate, StayEndDate, NumberOfGuests FROM dbo.Booking WHERE HotelID = @HotelID AND StayBeginDate >= @StayBeginDate";
+            using var conn = new SqlConnection(_connectionString);
+            await conn.OpenAsync();
+            using var cmd = new SqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@HotelID", hotelId);
+            cmd.Parameters.AddWithValue("@StayBeginDate", dt);
+            using var reader = await cmd.ExecuteReaderAsync();
+            var bookings = new List<Booking>();
+            while (await reader.ReadAsync())
             {
-                BookingID = reader.GetInt32(0),
-                CustomerID = reader.GetInt32(1),
-                HotelID = reader.GetInt32(2),
-                StayBeginDate = reader.GetDateTime(3),
-                StayEndDate = reader.GetDateTime(4),
-                NumberOfGuests = reader.GetInt32(5)
-            });
+                bookings.Add(new Booking
+                {
+                    BookingID = reader.GetInt32(0),
+                    CustomerID = reader.GetInt32(1),
+                    HotelID = reader.GetInt32(2),
+                    StayBeginDate = reader.GetDateTime(3),
+                    StayEndDate = reader.GetDateTime(4),
+                    NumberOfGuests = reader.GetInt32(5)
+                });
+            }
+            await conn.CloseAsync();
+
+            return bookings;
         }
-        conn.Close();
 
-        return bookings;
-    }
-
-    [KernelFunction]
+        [KernelFunction]
         [Description("Get Missing Hotel Rooms.")]
         public async Task<IEnumerable<Booking>> GetBookingsMissingHotelRooms()
         {
-            var sql = """
+            var sql = @"
                 SELECT
                     b.BookingID,
                     b.CustomerID,
@@ -131,12 +128,9 @@ public class DatabaseService(string connectionString) : IDatabaseService
                         FROM dbo.BookingHotelRoom h
                         WHERE
                             b.BookingID = h.BookingID
-                    );
-                """;
-            using var conn = new SqlConnection(
-                connectionString: connectionString!
-            );
-            conn.Open();
+                    );";
+            using var conn = new SqlConnection(_connectionString);
+            await conn.OpenAsync();
             using var cmd = new SqlCommand(sql, conn);
             using var reader = await cmd.ExecuteReaderAsync();
             var bookings = new List<Booking>();
@@ -152,16 +146,16 @@ public class DatabaseService(string connectionString) : IDatabaseService
                     NumberOfGuests = reader.GetInt32(5)
                 });
             }
-            conn.Close();
+            await conn.CloseAsync();
 
             return bookings;
         }
 
-    [KernelFunction]
+        [KernelFunction]
         [Description("Get Bookings with Multiple Hotel Rooms.")]
         public async Task<IEnumerable<Booking>> GetBookingsWithMultipleHotelRooms()
         {
-            var sql = """
+            var sql = @"
                 SELECT
                     b.BookingID,
                     b.CustomerID,
@@ -176,12 +170,9 @@ public class DatabaseService(string connectionString) : IDatabaseService
                         FROM dbo.BookingHotelRoom h
                         WHERE
                             b.BookingID = h.BookingID
-                    ) > 1;
-                """;
-            using var conn = new SqlConnection(
-                connectionString: connectionString!
-            );
-            conn.Open();
+                    ) > 1;";
+            using var conn = new SqlConnection(_connectionString);
+            await conn.OpenAsync();
             using var cmd = new SqlCommand(sql, conn);
             using var reader = await cmd.ExecuteReaderAsync();
             var bookings = new List<Booking>();
@@ -197,9 +188,9 @@ public class DatabaseService(string connectionString) : IDatabaseService
                     NumberOfGuests = reader.GetInt32(5)
                 });
             }
-            conn.Close();
+            await conn.CloseAsync();
 
             return bookings;
         }
-
+    }
 }
