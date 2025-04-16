@@ -335,7 +335,7 @@ def make_azure_openai_embedding_request(text):
     """Create and return a new embedding request. Key assumptions:
     - Azure OpenAI endpoint, key, and deployment name stored in Streamlit secrets."""
 
-    def make_azure_openai_embedding_request(text):
+def make_azure_openai_embedding_request(text):
     """Create and return a new embedding request. Key assumptions:
     - Azure OpenAI endpoint, key, and deployment name stored in Streamlit secrets."""
 
