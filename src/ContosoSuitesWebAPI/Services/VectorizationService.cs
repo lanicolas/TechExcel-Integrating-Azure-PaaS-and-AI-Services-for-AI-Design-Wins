@@ -1,4 +1,5 @@
-﻿using Azure.AI.OpenAI;
+﻿ using Microsoft.SemanticKernel;
+ using Microsoft.SemanticKernel.Embeddings;
 using ContosoSuitesWebAPI.Entities;
 using Microsoft.Azure.Cosmos;
 using System.Globalization;
@@ -8,20 +9,16 @@ namespace ContosoSuitesWebAPI.Services
     /// <summary>
     /// The vectorization service for generating embeddings and executing vector searches.
     /// </summary>
-    public class VectorizationService : IVectorizationService
+     
+     public class VectorizationService(Kernel kernel, CosmosClient cosmosClient, IConfiguration configuration) : IVectorizationService
+
     {
-        private readonly AzureOpenAIClient _client;
+        private readonly Kernel _kernel = kernel;
         private readonly CosmosClient _cosmosClient;
         private readonly IConfiguration _configuration;
         private readonly string _embeddingDeploymentName;
 
-        public VectorizationService(AzureOpenAIClient openAIClient, CosmosClient cosmosClient, IConfiguration configuration)
-        {
-            _client = openAIClient;
-            _cosmosClient = cosmosClient;
-            _configuration = configuration;
-            _embeddingDeploymentName = configuration.GetValue<string>("AzureOpenAI:EmbeddingDeploymentName") ?? "text-embedding-ada-002";
-        }
+
 
         /// <summary>
         /// Translate a text string into a vector embedding.
@@ -29,14 +26,16 @@ namespace ContosoSuitesWebAPI.Services
         /// </summary>
         public async Task<float[]> GetEmbeddings(string text)
         {
-            var embeddingClient = _client.GetEmbeddingClient(_embeddingDeploymentName);
 
             try
             {
                 // Generate a vector for the provided text.
-                var embeddings = await embeddingClient.GenerateEmbeddingAsync(text);
+                #pragma warning disable SKEXP0001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+                // Generate a vector for the provided text.
+                var embeddings = await _kernel.GetRequiredService<ITextEmbeddingGenerationService>().GenerateEmbeddingAsync(text);
+                #pragma warning restore SKEXP0001
 
-                var vector = embeddings.Value.Vector.ToArray();
+                var vector = embeddings.ToArray();
 
                 // Return the vector embeddings.
                 return vector;
